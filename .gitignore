@@ -1,0 +1,72 @@
+# AssureX Workspace .gitignore
+# This file only applies to workspace-level files
+# Each repository (trustx/, assurex-infra/) has its own .gitignore
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# VS Code workspace state (keep the config, ignore state)
+.vscode/*
+!.vscode/assurex.code-workspace
+.vscode/settings.json
+.vscode/tasks.json
+.vscode/launch.json
+.vscode/extensions.json
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Docker volumes
+docker-volumes/
+*.log
+
+# Temporary files
+*.tmp
+*.swp
+*.swo
+*~
+
+# IDE
+.idea/
+*.iml
+
+# Build artifacts (workspace level)
+dist/
+build/
+*.tgz
+
+# Node modules (if any workspace-level packages added in future)
+node_modules/
+
+# Python cache (if any workspace-level scripts added)
+__pycache__/
+*.pyc
+*.pyo
+
+# AWS credentials (never commit these)
+.aws/
+aws-credentials
+
+# Notes and scratch files
+notes.txt
+scratch.md
+TODO.md
+
+# Backup files
+*.bak
+*.backup
+
+# Sub-repositories (tracked separately)
+# These are separate git repos, not tracked at workspace level
+assurex-infra/
+profile-360-backend/
+assurex-insights-engine/
+trustx/
+
+# Claude Code local settings
+.claude/settings.local.json
