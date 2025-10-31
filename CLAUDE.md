@@ -92,15 +92,19 @@ This guide helps Claude AI (and other AI assistants) understand the complete Ass
 **Key Features**:
 - User profile management (CRUD)
 - Activity tracking and analytics
-- Dormant user detection
+- Dormant user detection (AI-powered)
+- Privilege creep detection (AI-powered, Bedrock Claude)
 - Neo4j knowledge graph (multi-tenant)
 - JWT-based authentication (Auth0)
+- Event router orchestration
 
 **Endpoints**: `/profile360/*`
 - `/profile360/users/` - User management
 - `/profile360/users/{user_id}/activities` - Activity history
 - `/profile360/users/dormant` - Dormant users
 - `/profile360/api/knowledge-graph/*` - Graph operations
+- `/profile360/api/privilege-creep/*` - Privilege creep analytics
+- `/profile360/api/analytics/*` - User analytics and insights
 
 **Multi-Tenant Pattern**:
 - Separate Neo4j instance per tenant
@@ -148,6 +152,42 @@ This guide helps Claude AI (and other AI assistants) understand the complete Ass
 
 ## 🔄 How Repositories Interact
 
+### Event Router Orchestration (New!)
+
+**Event Router** is the central orchestration Lambda that manages the complete data processing pipeline:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Event Router Lambda                       │
+│               (assurex-insights-engine)                      │
+└─────────────────┬───────────────────────────────────────────┘
+                  │ Receives: sync_completed trigger
+                  │
+      ┌───────────┼───────────┬───────────┬───────────┐
+      │           │           │           │           │
+      ▼           ▼           ▼           ▼           ▼
+  ┌──────┐   ┌────────┐  ┌────────┐ ┌─────────┐ ┌─────────┐
+  │ ETL  │   │Vector- │  │ Neo4j  │ │Analytics│ │Privilege│
+  │      │   │ization │  │  Sync  │ │         │ │  Creep  │
+  └──────┘   └────────┘  └────────┘ └─────────┘ └─────────┘
+     202         202         202        202          202
+  (async)     (async)     (async)    (async)      (async)
+```
+
+**Pipeline Flow**:
+1. Integration sync completes → Event router triggered
+2. Router invokes 6 Lambda functions asynchronously (all return 202)
+3. Each component processes independently in parallel
+4. Results stored in PostgreSQL and Neo4j
+
+**Components**:
+- **ETL**: Extract raw data, load into database
+- **Vectorization**: Generate embeddings for semantic search
+- **Neo4j Sync**: Build knowledge graph (users, apps, groups)
+- **Analytics**: Calculate user metrics and statistics
+- **Dormant User Agent**: Detect inactive users (AI-powered)
+- **Privilege Creep Agent**: Identify excessive permissions (AI-powered)
+
 ### User Journey Example: GitHub Integration Sync
 
 ```
@@ -160,13 +200,19 @@ This guide helps Claude AI (and other AI assistants) understand the complete Ass
 3. Integrations API (assurex-infra):
    AppSync → Lambda → S3 (stores raw data)
    ↓
-4. ETL Processing (assurex-insights-engine):
-   S3 event → Lambda → Process data → Database
+4. Event Router (assurex-insights-engine):
+   S3 event → Triggers complete pipeline (6 Lambda functions)
    ↓
-5. Profile360 API (profile-360-backend):
+5. ETL Processing (assurex-insights-engine):
+   Processes data → Loads into PostgreSQL
+   ↓
+6. AI Agents (assurex-insights-engine):
+   Dormant detection + Privilege creep analysis
+   ↓
+7. Profile360 API (profile-360-backend):
    Provides analytics on processed data
    ↓
-6. Frontend (trustx):
+8. Frontend (trustx):
    Polls sync status, displays results
 ```
 
@@ -221,8 +267,10 @@ This guide helps Claude AI (and other AI assistants) understand the complete Ass
 | **Feature roadmap** | Workspace root | `DEVELOPMENT_ROADMAP.md` |
 | **Documentation map** | Workspace docs | `docs/INDEX.md` |
 | **Infrastructure details** | assurex-infra | `CLAUDE.md`, `docs/` |
-| **API endpoints** | profile-360-backend | `CLAUDE.md` |
+| **API endpoints** | profile-360-backend | `README.md` |
 | **ETL architecture** | assurex-insights-engine | `README.md` |
+| **Event router** | assurex-insights-engine | `functions/event-router/` |
+| **Privilege creep** | assurex-insights-engine | `functions/privilege-creep-agent/` |
 | **Frontend components** | trustx | `README.md`, `docs/COMPONENTS.md` |
 | **Dormant user feature** | profile-360-backend | `docs/DORMANT_USER_*.md` |
 | **Neo4j integration** | profile-360-backend | `docs/PROFILE360_NEO4J_CHECKPOINT.md` |
@@ -402,7 +450,7 @@ Database: assurex_dev / assurex_preprod
    - Tenant context correct?
    - Database connection working?
 
-## 📊 Current Status (Oct 10, 2025)
+## 📊 Current Status (Oct 31, 2025)
 
 ### What's Working ✅
 
@@ -410,25 +458,30 @@ Database: assurex_dev / assurex_preprod
 |-----------|--------|-------|
 | Frontend (trustx) | ✅ Production | Live at app.trustx.cloud |
 | Infrastructure (assurex-infra) | ✅ Dev + Preprod | Phase 3.6 complete |
-| Profile360 API | ✅ Dev + Preprod | Neo4j integrated |
-| Insights Engine | ✅ Phase 4 Complete | Hybrid ETL working |
+| Profile360 API | ✅ Dev + Preprod | Neo4j + Privilege Creep |
+| Insights Engine | ✅ Dev + Preprod | Event Router + AI Agents |
+| Event Router | ✅ Dev + Preprod | Orchestrating 6-step pipeline |
+| Privilege Creep Agent | ✅ Dev + Preprod | AI-powered detection |
+| Dormant User Agent | ✅ Dev + Preprod | AI-powered detection |
 
 ### What's Pending ⏳
 
 - Production infrastructure deployment
 - Production database setup
-- Insights Engine preprod deployment
 - Production Neo4j instances
 - S3 event notifications for auto-triggering
 - Advanced monitoring & alerting
+- GraphRAG integration (Phase 5+)
 
 ### Recent Milestones 🎉
 
+- **Oct 31**: Preprod privilege creep deployed & operational
+- **Oct 31**: Event router orchestration working in dev + preprod
+- **Oct 30**: Privilege creep API routes registered & tested
+- **Oct 30**: Neo4j sync triggered for preprod (45 users, 252 relationships)
 - **Oct 10**: Hybrid ETL Phase 4 complete (35 group memberships loaded)
 - **Oct 8**: Neo4j multi-tenant integration live
 - **Oct 6**: Tenant validation & access control
-- **Oct 5**: Sync status polling feature
-- **Oct 4**: Multi-IDP integration (GitHub, Jira, Okta, Entra)
 
 ## 🔧 Development Best Practices
 
@@ -558,12 +611,13 @@ Database: assurex_dev / assurex_preprod
 
 ---
 
-**Last Updated**: October 10, 2025
+**Last Updated**: October 31, 2025
 **Maintained By**: AssureX Engineering Team
 **Workspace Location**: `/Users/ramakesani/Documents/assurex`
 
 ## Version
 
-**Workspace CLAUDE.md Version**: 1.0.0
-**Last Comprehensive Update**: October 10, 2025
-**Next Review**: November 1, 2025
+**Workspace CLAUDE.md Version**: 1.1.0
+**Last Comprehensive Update**: October 31, 2025
+**Major Updates**: Event Router orchestration, Privilege Creep AI agent, Preprod deployment complete
+**Next Review**: November 15, 2025
