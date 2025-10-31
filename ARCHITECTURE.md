@@ -451,12 +451,30 @@ Step 6: API Access
 │                                                                     │
 │  ┌────────────────────────────────────────────────────────────┐   │
 │  │  tenant_118230 (trustx - completely isolated)               │   │
-│  │  • sso_users, groups, apps                                  │   │
-│  │  • group_memberships, app_assignments                       │   │
-│  │  • user_activities, user_profiles                           │   │
-│  │  • privilege_creep_insights, dormant_user_insights          │   │
-│  │  • embeddings, knowledge_graph_metadata                     │   │
-│  │  • ... 100+ tables                                          │   │
+│  │                                                             │   │
+│  │  📋 Template Schema Tables (50+ tables):                   │   │
+│  │     Main compliance/governance platform                     │   │
+│  │     • sso_users, groups, apps                               │   │
+│  │     • group_memberships, app_assignments                    │   │
+│  │     • user_activities, user_profiles                        │   │
+│  │     • policies, frameworks_subscription                     │   │
+│  │     • control_implementations                               │   │
+│  │                                                             │   │
+│  │  📊 Profile360 Analytics Tables (6 tables):                │   │
+│  │     User analytics & AI insights (V017)                     │   │
+│  │     • profile360_users (with vector embeddings)             │   │
+│  │     • profile360_user_activities                            │   │
+│  │     • profile360_user_apps                                  │   │
+│  │     • profile360_user_groups                                │   │
+│  │     • profile360_user_signins                               │   │
+│  │     • profile360_user_permissions                           │   │
+│  │                                                             │   │
+│  │  🤖 AI Agent Tables (4 tables):                            │   │
+│  │     AI analysis results storage (V020, V023)                │   │
+│  │     • privilege_creep_insights                              │   │
+│  │     • privilege_creep_analysis_history                      │   │
+│  │     • dormant_user_insights                                 │   │
+│  │     • agent_analysis_history                                │   │
 │  └────────────────────────────────────────────────────────────┘   │
 │                                                                     │
 │  ┌────────────────────────────────────────────────────────────┐   │
@@ -545,6 +563,155 @@ Step 6: API Access
 ✅ **Security**: Schema-level access control, credential isolation
 ✅ **Compliance**: Tenant data can be deleted/exported independently
 ✅ **Debugging**: Easy to inspect single tenant's data
+
+### Database Table Usage Patterns
+
+Each tenant schema contains **three distinct categories** of tables serving different purposes:
+
+#### 1. Template Schema Tables (50+ tables) - Main Platform
+**Purpose**: Core compliance/governance operations
+**Created by**: V003__template_schema.sql migration
+**Used by**: Main AssureX platform (Integrations API)
+
+**Key tables**:
+- `sso_users` - SSO user accounts from IDPs (GitHub, Okta, Entra)
+- `group_memberships` - User-to-group associations
+- `app_assignments` - User-to-application access grants
+- `applications` - Tenant application catalog
+- `user_app_mapping` - User application mappings
+- `user_profiles` - User profile information
+- `user_activities` - General user activity tracking
+- `policies` - Governance policies
+- `control_implementations` - Compliance control implementations
+- `frameworks_subscription` - Framework subscriptions (SOC2, ISO, NIST)
+- ...40+ more tables for compliance operations
+
+#### 2. Profile360 Analytics Tables (6 tables) - User Analytics
+**Purpose**: User analytics, behavior tracking, AI-powered insights
+**Created by**: V017__profile360_core_tables.sql migration
+**Used by**:
+  - profile-360-backend (FastAPI) - PRIMARY user
+  - insights-engine AI agents - EXCLUSIVE user
+
+**Tables**:
+- `profile360_users` - User profiles with **vector embeddings** (1536 dimensions)
+  - profile_embedding, access_embedding, behavior_embedding
+  - Neo4j sync tracking (neo4j_node_id, synced_to_graph_at)
+  - Optimized for AI/ML operations
+- `profile360_user_activities` - Activity event tracking
+- `profile360_user_apps` - User-to-app associations (denormalized)
+- `profile360_user_groups` - User-to-group associations (denormalized)
+- `profile360_user_signins` - Sign-in event tracking
+- `profile360_user_permissions` - Permission assignments
+
+**Key Features**:
+- Denormalized for fast analytics queries
+- Vector embeddings for similarity search (pgvector)
+- Optimized for aggregations and grouping
+- AI-ready data structures
+
+#### 3. AI Agent Tables (4 tables) - Analysis Results
+**Purpose**: Store AI-generated insights and agent execution history
+**Created by**: V020 (Dormant User), V023 (Privilege Creep) migrations
+**Used by**:
+  - insights-engine (writes analysis results)
+  - profile-360-backend (reads and serves via API)
+
+**Tables**:
+- `dormant_user_insights` - AI classification of dormant users
+- `privilege_creep_insights` - AI privilege creep analysis
+- `agent_analysis_history` - Dormant agent execution tracking
+- `privilege_creep_analysis_history` - Privilege agent execution tracking
+
+### Service-to-Table Mapping
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  Main Platform (Integrations API)                            │
+│  Uses: Template Schema Tables ONLY                           │
+│  • sso_users, group_memberships, app_assignments             │
+│  • policies, control_implementations, frameworks             │
+└──────────────────────────────────────────────────────────────┘
+                              │
+                              │ ETL transforms & enriches
+                              ▼
+┌──────────────────────────────────────────────────────────────┐
+│  Insights Engine (AI Agents)                                 │
+│  Uses: Profile360 Tables EXCLUSIVELY                         │
+│  Writes: AI Agent Tables                                     │
+│                                                              │
+│  Privilege Creep Agent:                                      │
+│    Reads: profile360_users, profile360_user_groups,          │
+│           profile360_user_apps                               │
+│    Writes: privilege_creep_insights,                         │
+│            privilege_creep_analysis_history                  │
+│                                                              │
+│  Dormant User Agent:                                         │
+│    Reads: profile360_users, profile360_user_signins          │
+│    Writes: dormant_user_insights,                            │
+│            agent_analysis_history                            │
+└──────────────────────────────────────────────────────────────┘
+                              │
+                              │ API queries
+                              ▼
+┌──────────────────────────────────────────────────────────────┐
+│  Profile360 Backend (FastAPI API)                            │
+│  Uses: MIXED - Both Profile360 and Template Schema Tables   │
+│                                                              │
+│  Reads from Profile360 tables:                               │
+│  • profile360_users (primary user data)                      │
+│                                                              │
+│  Also reads from Template Schema tables:                     │
+│  • user_activities, applications, user_app_mapping           │
+│  • user_profiles (for additional context)                    │
+│                                                              │
+│  Reads AI results from:                                      │
+│  • privilege_creep_insights, dormant_user_insights           │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### Data Flow: Template Schema → Profile360 Tables
+
+**ETL Transformation Process**:
+
+1. **IDP Sync** (Integrations API):
+   - GitHub/Okta/Entra data → S3 raw storage
+   - ETL processor extracts data
+   - Inserts into template schema tables (`sso_users`, `group_memberships`)
+
+2. **Analytics Transformation** (Insights Engine):
+   - Reads from template schema tables
+   - Denormalizes and enriches data
+   - Generates vector embeddings (AWS Bedrock Titan)
+   - Writes to `profile360_*` tables
+
+3. **AI Analysis** (AI Agents):
+   - Reads from `profile360_*` tables ONLY
+   - Never touches template schema tables
+   - Generates insights
+   - Writes to AI agent tables
+
+4. **API Serving** (Profile360 Backend):
+   - Reads from both Profile360 and template schema tables
+   - Serves unified analytics to frontend
+   - Returns AI insights from agent tables
+
+### Why Two Sets of Tables?
+
+**Template Schema (Normalized)**:
+- ✅ Optimized for transactional operations
+- ✅ Maintains referential integrity
+- ✅ Supports complex policy enforcement
+- ✅ Detailed audit trails
+
+**Profile360 Tables (Denormalized)**:
+- ✅ Optimized for analytics aggregations
+- ✅ Fast similarity searches (vector indexes)
+- ✅ Pre-joined data for common queries
+- ✅ AI/ML-ready data structures
+- ✅ Reduced query complexity for dashboards
+
+**Result**: Best of both worlds - transactional integrity AND analytical performance.
 
 ---
 
