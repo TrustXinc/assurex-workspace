@@ -646,6 +646,7 @@ vim serverless.yml  # Update environment section
 
 ### For AI Assistants & Developers
 - **[CLAUDE.md](./CLAUDE.md)** - 🤖 **START HERE** - Complete project guide for AI assistants covering all 4 repositories, their roles, and how they interact
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - 🏗️ **NEW!** - Comprehensive system architecture with detailed diagrams (VPC, data flow, multi-tenant, security, API, AI/ML)
 
 ### Cross-Repo Status & Planning
 - **[PROJECT_STATUS.md](./PROJECT_STATUS.md)** - 📊 Current status of all repositories, deployed services, and key metrics
@@ -670,5 +671,5 @@ make status
 
 ---
 
-**Last Updated:** October 10, 2025
+**Last Updated:** October 31, 2025
 **Maintained By:** AssureX Engineering Team
