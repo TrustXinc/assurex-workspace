@@ -7,6 +7,79 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2025-10-31] - Excessive Access Detection - Complete ✅
+
+### profile-360-backend
+#### Added
+- **Excessive Access API Routes** (`app/routes/excessive_access.py`)
+  - 6 new REST endpoints for excessive access analytics
+  - Multi-tenant query isolation with tenant context
+  - Z-score based statistical analysis
+  - Integration with Lambda agent insights
+
+#### Endpoints
+- `GET /api/excessive-access/summary` - Overall statistics
+- `GET /api/excessive-access/users` - User insights list with filtering
+- `GET /api/excessive-access/users/{user_id}` - Individual user detail
+- `GET /api/excessive-access/risk-distribution` - Risk level distribution
+- `GET /api/excessive-access/insights` - Aggregated patterns
+- `GET /api/excessive-access/heatmap` - Z-score heatmap data
+
+#### Fixed
+- Column name mismatch: `model_used` → `analysis_model`
+- Cascading department fallback for meaningful labels (department → cohort → job_title → 'Unknown')
+- Response data structure consistency
+
+#### Documentation
+- Created `docs/EXCESSIVE_ACCESS_FEATURE.md` - comprehensive feature documentation
+- Updated README.md with new endpoints and features
+- Updated recent updates section
+
+### trustx
+#### Added
+- **ExcessiveAccessDashboard Component** (`src/components/Profile360/components/ExcessiveAccessDashboard.js`)
+  - Summary cards (total users, risk breakdown by level)
+  - User list table (sortable, filterable, paginated)
+  - Z-Score heatmap (bubble chart by department/job title)
+  - Risk distribution pie chart
+  - Peer comparison bar chart
+  - Cohort distribution bar chart
+
+- **API Service Integration** (`src/components/Profile360/services/apiService.js`)
+  - 6 new methods for excessive access endpoints
+  - Proper error handling and loading states
+  - Tenant-aware API calls
+
+#### Fixed
+- Double-wrapped response issue: `response.data` → `response.data.data`
+- ExcessiveAccessDashboard data access paths (3 locations)
+- AnalyticsDashboard excessive access count fetch
+- User count discrepancy (removed "Users Analyzed" card)
+- Removed "Recommendations" placeholder card
+- Rebalanced grid layout from 7 to 5 cards (md={2} → md={2.4})
+
+#### Changed
+- Analytics Dashboard cleanup
+  - Removed confusing "Users Analyzed" card (mixed data sources)
+  - Removed non-functional "Recommendations" card
+  - All cards now show consistent AI-powered insight counts
+
+#### Documentation
+- Updated CLAUDE.md with Excessive Access components
+- Updated API endpoints list
+- Added recent updates section for Oct 31, 2025
+
+### assurex-insights-engine
+#### Working
+- Excessive Access Lambda Agent operational in dev environment
+- Z-score calculation for group count and app count
+- Peer cohort analysis (job_title or department strategy)
+- AI-powered justification via AWS Bedrock Claude (Haiku)
+- Risk level classification (critical, high, moderate, low)
+- Integration with event router pipeline
+
+---
+
 ### 🚀 Profile360 Insights Engine Redesign (ALL REPOS) - MAJOR INITIATIVE
 **Status**: Design Phase Complete - Ready for Implementation
 **Duration**: 12 weeks (6 phases)
